@@ -150,6 +150,16 @@ ruleTester.run('no-excessive-optionals', rule, {
         }
       `,
     },
+    // allOptionalMinSize override: size-2 all-optional opted out
+    {
+      code: `
+        interface Pair {
+          a?: string;
+          b?: string;
+        }
+      `,
+      options: [{ allOptionalMinSize: 3 }],
+    },
   ],
 
   invalid: [
@@ -406,6 +416,26 @@ ruleTester.run('no-excessive-optionals', rule, {
             name: 'SmallType',
             optionalCount: '3',
             totalCount: '3',
+          },
+        },
+      ],
+    },
+    // allOptionalMinSize: 1 forces size-1 to be flagged
+    {
+      code: `
+        interface Single {
+          note?: string;
+        }
+      `,
+      options: [{ allOptionalMinSize: 1 }],
+      errors: [
+        {
+          messageId: 'allOptional',
+          data: {
+            kind: 'Interface',
+            name: 'Single',
+            optionalCount: '1',
+            totalCount: '1',
           },
         },
       ],

@@ -13,7 +13,7 @@ const createRule = ESLintUtils.RuleCreator(
 const DEFAULT_MAX_OPTIONAL = 3;
 const DEFAULT_MAX_OPTIONAL_RATIO = 0.5;
 const PERCENTAGE_MULTIPLIER = 100;
-const ALL_OPTIONAL_MIN_SIZE = 2;
+const DEFAULT_ALL_OPTIONAL_MIN_SIZE = 2;
 
 const DEFAULT_IGNORE_PATTERNS = [
   '*Config',
@@ -26,6 +26,7 @@ type Options = [
   {
     maxOptional?: number;
     maxOptionalRatio?: number;
+    allOptionalMinSize?: number;
     checkInlineTypes?: boolean;
     ignorePatterns?: string[];
   },
@@ -43,6 +44,7 @@ interface ReportArgs {
 interface ResolvedOptions {
   maxOptional: number;
   maxOptionalRatio: number;
+  allOptionalMinSize: number;
   checkInlineTypes: boolean;
   ignorePatterns: string[];
 }
@@ -107,6 +109,8 @@ function resolveOptions(
     maxOptional: options.maxOptional ?? DEFAULT_MAX_OPTIONAL,
     maxOptionalRatio:
       options.maxOptionalRatio ?? DEFAULT_MAX_OPTIONAL_RATIO,
+    allOptionalMinSize:
+      options.allOptionalMinSize ?? DEFAULT_ALL_OPTIONAL_MIN_SIZE,
     checkInlineTypes: options.checkInlineTypes ?? false,
     ignorePatterns:
       options.ignorePatterns ?? DEFAULT_IGNORE_PATTERNS,
@@ -171,7 +175,7 @@ function makeReporter(
       return;
     }
     if (
-      counts.total >= ALL_OPTIONAL_MIN_SIZE
+      counts.total >= opts.allOptionalMinSize
       && counts.optional === counts.total
     ) {
       reportAllOptional(context, args, counts);
@@ -261,6 +265,7 @@ export default createRule<Options, MessageIds>({
         properties: {
           maxOptional: { type: 'number' },
           maxOptionalRatio: { type: 'number' },
+          allOptionalMinSize: { type: 'number', minimum: 1 },
           checkInlineTypes: { type: 'boolean' },
           ignorePatterns: {
             type: 'array',
@@ -275,6 +280,7 @@ export default createRule<Options, MessageIds>({
     {
       maxOptional: DEFAULT_MAX_OPTIONAL,
       maxOptionalRatio: DEFAULT_MAX_OPTIONAL_RATIO,
+      allOptionalMinSize: DEFAULT_ALL_OPTIONAL_MIN_SIZE,
       checkInlineTypes: false,
       ignorePatterns: DEFAULT_IGNORE_PATTERNS,
     },
