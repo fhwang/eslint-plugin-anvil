@@ -9,16 +9,6 @@ const ruleTester = new RuleTester({
 
 ruleTester.run('no-excessive-optionals', rule, {
   valid: [
-    // Below count threshold (3 optional out of 3, but only 3 <= 3)
-    {
-      code: `
-        interface SmallType {
-          a?: string;
-          b?: string;
-          c?: string;
-        }
-      `,
-    },
     // Below ratio threshold (3 optional out of 10 = 30%)
     {
       code: `
@@ -140,16 +130,6 @@ ruleTester.run('no-excessive-optionals', rule, {
         }
       `,
     },
-    // Mixed `?` and `| null` — 3 empty-able / 3 total = 100%, but count 3 not > 3
-    {
-      code: `
-        interface CcdSnapshotMeta {
-          source_document_key: string | null;
-          source_document_date: string | null;
-          note?: string;
-        }
-      `,
-    },
     // ignorePatterns still applies to nullable-heavy types
     {
       code: `
@@ -159,6 +139,14 @@ ruleTester.run('no-excessive-optionals', rule, {
           c: string | null;
           d: string | null;
           e: string | null;
+        }
+      `,
+    },
+    // Size-1 fully optional: below floor, not flagged
+    {
+      code: `
+        interface Note {
+          note?: string;
         }
       `,
     },
@@ -206,13 +194,12 @@ ruleTester.run('no-excessive-optionals', rule, {
       `,
       errors: [
         {
-          messageId: 'excessiveOptionals',
+          messageId: 'allOptional',
           data: {
             kind: 'Type',
             name: 'UserProfile',
             optionalCount: '6',
             totalCount: '6',
-            percentage: '100',
           },
         },
       ],
@@ -249,7 +236,7 @@ ruleTester.run('no-excessive-optionals', rule, {
       options: [{ checkInlineTypes: true, maxOptional: 5 }],
       errors: [
         {
-          messageId: 'excessiveOptionals',
+          messageId: 'allOptional',
         },
       ],
     },
@@ -265,13 +252,12 @@ ruleTester.run('no-excessive-optionals', rule, {
       `,
       errors: [
         {
-          messageId: 'excessiveOptionals',
+          messageId: 'allOptional',
           data: {
             kind: 'Interface',
             name: 'Snapshot',
             optionalCount: '4',
             totalCount: '4',
-            percentage: '100',
           },
         },
       ],
@@ -313,13 +299,12 @@ ruleTester.run('no-excessive-optionals', rule, {
       `,
       errors: [
         {
-          messageId: 'excessiveOptionals',
+          messageId: 'allOptional',
           data: {
             kind: 'Interface',
             name: 'Triple',
             optionalCount: '4',
             totalCount: '4',
-            percentage: '100',
           },
         },
       ],
@@ -353,13 +338,74 @@ ruleTester.run('no-excessive-optionals', rule, {
       `,
       errors: [
         {
-          messageId: 'excessiveOptionals',
+          messageId: 'allOptional',
           data: {
             kind: 'Interface',
             name: 'Mixed',
             optionalCount: '4',
             totalCount: '4',
-            percentage: '100',
+          },
+        },
+      ],
+    },
+    // Size-2, all `?`: 2/2 = 100% → allOptional
+    {
+      code: `
+        interface Pair {
+          a?: string;
+          b?: string;
+        }
+      `,
+      errors: [
+        {
+          messageId: 'allOptional',
+          data: {
+            kind: 'Interface',
+            name: 'Pair',
+            optionalCount: '2',
+            totalCount: '2',
+          },
+        },
+      ],
+    },
+    // CcdSnapshotMeta: 3/3 = 100% → allOptional (motivating case)
+    {
+      code: `
+        interface CcdSnapshotMeta {
+          source_document_key: string | null;
+          source_document_date: string | null;
+          note?: string;
+        }
+      `,
+      errors: [
+        {
+          messageId: 'allOptional',
+          data: {
+            kind: 'Interface',
+            name: 'CcdSnapshotMeta',
+            optionalCount: '3',
+            totalCount: '3',
+          },
+        },
+      ],
+    },
+    // SmallType: 3/3 = 100% → allOptional (was below old count threshold)
+    {
+      code: `
+        interface SmallType {
+          a?: string;
+          b?: string;
+          c?: string;
+        }
+      `,
+      errors: [
+        {
+          messageId: 'allOptional',
+          data: {
+            kind: 'Interface',
+            name: 'SmallType',
+            optionalCount: '3',
+            totalCount: '3',
           },
         },
       ],

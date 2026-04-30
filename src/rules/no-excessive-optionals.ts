@@ -13,6 +13,7 @@ const createRule = ESLintUtils.RuleCreator(
 const DEFAULT_MAX_OPTIONAL = 3;
 const DEFAULT_MAX_OPTIONAL_RATIO = 0.5;
 const PERCENTAGE_MULTIPLIER = 100;
+const ALL_OPTIONAL_MIN_SIZE = 2;
 
 const DEFAULT_IGNORE_PATTERNS = [
   '*Config',
@@ -30,7 +31,7 @@ type Options = [
   },
 ];
 
-type MessageIds = 'excessiveOptionals';
+type MessageIds = 'excessiveOptionals' | 'allOptional';
 
 interface ReportArgs {
   node: TSESTree.Node;
@@ -114,6 +115,49 @@ function resolveOptions(
 
 type RuleContext = TSESLint.RuleContext<MessageIds, Options>;
 
+interface Counts {
+  total: number;
+  optional: number;
+}
+
+function reportAllOptional(
+  context: RuleContext,
+  args: ReportArgs,
+  counts: Counts,
+): void {
+  context.report({
+    node: args.node,
+    messageId: 'allOptional',
+    data: {
+      kind: args.kind,
+      name: args.name,
+      optionalCount: String(counts.optional),
+      totalCount: String(counts.total),
+    },
+  });
+}
+
+function reportExcessive(
+  context: RuleContext,
+  args: ReportArgs,
+  counts: Counts,
+): void {
+  const percentage = Math.round(
+    (counts.optional / counts.total) * PERCENTAGE_MULTIPLIER,
+  );
+  context.report({
+    node: args.node,
+    messageId: 'excessiveOptionals',
+    data: {
+      kind: args.kind,
+      name: args.name,
+      optionalCount: String(counts.optional),
+      totalCount: String(counts.total),
+      percentage: String(percentage),
+    },
+  });
+}
+
 function makeReporter(
   context: RuleContext,
   opts: ResolvedOptions,
@@ -122,26 +166,22 @@ function makeReporter(
     if (matchesPattern(args.name, opts.ignorePatterns)) {
       return;
     }
-    const { total, optional } = checkMembers(args.members);
+    const counts = checkMembers(args.members);
+    if (counts.total === 0) {
+      return;
+    }
     if (
-      optional > opts.maxOptional
-      && total > 0
-      && optional / total > opts.maxOptionalRatio
+      counts.total >= ALL_OPTIONAL_MIN_SIZE
+      && counts.optional === counts.total
     ) {
-      const percentage = Math.round(
-        (optional / total) * PERCENTAGE_MULTIPLIER,
-      );
-      context.report({
-        node: args.node,
-        messageId: 'excessiveOptionals',
-        data: {
-          kind: args.kind,
-          name: args.name,
-          optionalCount: String(optional),
-          totalCount: String(total),
-          percentage: String(percentage),
-        },
-      });
+      reportAllOptional(context, args, counts);
+      return;
+    }
+    if (
+      counts.optional > opts.maxOptional
+      && counts.optional / counts.total > opts.maxOptionalRatio
+    ) {
+      reportExcessive(context, args, counts);
     }
   };
 }
@@ -207,6 +247,13 @@ export default createRule<Options, MessageIds>({
         + 'optional or nullable members ({{percentage}}%). '
         + 'Consider modeling '
         + 'correlated state as a discriminated union.',
+      allOptional:
+        '{{kind}} \'{{name}}\' has '
+        + '{{optionalCount}}/{{totalCount}} '
+        + 'optional or nullable members (100%). '
+        + 'Every member is optional, leaving no required structure. '
+        + 'Consider modeling required state explicitly '
+        + 'or using a discriminated union.',
     },
     schema: [
       {
