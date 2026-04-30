@@ -129,6 +129,39 @@ ruleTester.run('no-excessive-optionals', rule, {
         }): void {}
       `,
     },
+    // Single nullable field below threshold
+    {
+      code: `
+        interface User {
+          id: string;
+          name: string;
+          email: string;
+          middleName: string | null;
+        }
+      `,
+    },
+    // Mixed `?` and `| null` — 3 empty-able / 3 total = 100%, but count 3 not > 3
+    {
+      code: `
+        interface CcdSnapshotMeta {
+          source_document_key: string | null;
+          source_document_date: string | null;
+          note?: string;
+        }
+      `,
+    },
+    // ignorePatterns still applies to nullable-heavy types
+    {
+      code: `
+        interface FetchConfig {
+          a: string | null;
+          b: string | null;
+          c: string | null;
+          d: string | null;
+          e: string | null;
+        }
+      `,
+    },
   ],
 
   invalid: [
@@ -217,6 +250,117 @@ ruleTester.run('no-excessive-optionals', rule, {
       errors: [
         {
           messageId: 'excessiveOptionals',
+        },
+      ],
+    },
+    // All `| null`: 4 nullable / 4 total = 100%, count 4 > 3
+    {
+      code: `
+        interface Snapshot {
+          a: string | null;
+          b: string | null;
+          c: string | null;
+          d: string | null;
+        }
+      `,
+      errors: [
+        {
+          messageId: 'excessiveOptionals',
+          data: {
+            kind: 'Interface',
+            name: 'Snapshot',
+            optionalCount: '4',
+            totalCount: '4',
+            percentage: '100',
+          },
+        },
+      ],
+    },
+    // Mixed `?` and `| null`: 5 empty-able / 6 total = 83%
+    {
+      code: `
+        interface Document {
+          id: string;
+          author?: string;
+          editor?: string;
+          publishedAt: string | null;
+          archivedAt: string | null;
+          deletedAt: string | null;
+        }
+      `,
+      errors: [
+        {
+          messageId: 'excessiveOptionals',
+          data: {
+            kind: 'Interface',
+            name: 'Document',
+            optionalCount: '5',
+            totalCount: '6',
+            percentage: '83',
+          },
+        },
+      ],
+    },
+    // `T | null | undefined` counts once per field, not twice
+    {
+      code: `
+        interface Triple {
+          a: string | null | undefined;
+          b: string | null | undefined;
+          c: string | null | undefined;
+          d: string | null | undefined;
+        }
+      `,
+      errors: [
+        {
+          messageId: 'excessiveOptionals',
+          data: {
+            kind: 'Interface',
+            name: 'Triple',
+            optionalCount: '4',
+            totalCount: '4',
+            percentage: '100',
+          },
+        },
+      ],
+    },
+    // Nullable counting respects custom thresholds
+    {
+      code: `
+        interface Foo {
+          a: string;
+          b: string | null;
+          c: string | null;
+          d: string | null;
+        }
+      `,
+      options: [{ maxOptional: 2, maxOptionalRatio: 0.5 }],
+      errors: [
+        {
+          messageId: 'excessiveOptionals',
+        },
+      ],
+    },
+    // Property both `?` and `| null` counts once
+    {
+      code: `
+        interface Mixed {
+          a?: string | null;
+          b?: string | null;
+          c?: string | null;
+          d?: string | null;
+        }
+      `,
+      errors: [
+        {
+          messageId: 'excessiveOptionals',
+          data: {
+            kind: 'Interface',
+            name: 'Mixed',
+            optionalCount: '4',
+            totalCount: '4',
+            percentage: '100',
+          },
         },
       ],
     },
