@@ -58,6 +58,26 @@ function matchesPattern(
   });
 }
 
+function isNullableTypeNode(node: TSESTree.TypeNode): boolean {
+  return (
+    node.type === AST_NODE_TYPES.TSNullKeyword
+    || node.type === AST_NODE_TYPES.TSUndefinedKeyword
+  );
+}
+
+function annotationAllowsAbsence(
+  typeAnn: TSESTree.TSTypeAnnotation | undefined,
+): boolean {
+  if (!typeAnn) {
+    return false;
+  }
+  const inner = typeAnn.typeAnnotation;
+  if (inner.type === AST_NODE_TYPES.TSUnionType) {
+    return inner.types.some(isNullableTypeNode);
+  }
+  return isNullableTypeNode(inner);
+}
+
 function checkMembers(
   members: TSESTree.TypeElement[],
 ): { total: number; optional: number } {
@@ -68,7 +88,10 @@ function checkMembers(
       member.type === AST_NODE_TYPES.TSPropertySignature
     ) {
       total += 1;
-      if (member.optional) {
+      if (
+        member.optional
+        || annotationAllowsAbsence(member.typeAnnotation)
+      ) {
         optional += 1;
       }
     }
@@ -174,14 +197,14 @@ export default createRule<Options, MessageIds>({
     type: 'suggestion',
     docs: {
       description:
-        'Disallow object types where optional members dominate, '
+        'Disallow object types where optional or nullable members dominate, '
         + 'suggesting a discriminated union instead',
     },
     messages: {
       excessiveOptionals:
         '{{kind}} \'{{name}}\' has '
         + '{{optionalCount}}/{{totalCount}} '
-        + 'optional members ({{percentage}}%). '
+        + 'optional or nullable members ({{percentage}}%). '
         + 'Consider modeling '
         + 'correlated state as a discriminated union.',
     },
